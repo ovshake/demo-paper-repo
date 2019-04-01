@@ -1,6 +1,6 @@
 # Code 
 This repository houses the code for **Go Wide, Go Deep:  Quantifying the Impact of Scientific Papers through Influence Dispersion Trees**
-(accepted at *ACM/IEEE Joint Conference on Digital Libraries (Core A\* Conference)* authored by Dattatreya Mohapatra, Abhishek Maiti, Sumit Bhatia & Tanmoy Chakraborty. 
+(accepted at *ACM/IEEE Joint Conference on Digital Libraries* authored by Dattatreya Mohapatra, Abhishek Maiti, Sumit Bhatia & Tanmoy Chakraborty. 
 
 ## Directories 
 ### src
@@ -30,7 +30,7 @@ The agruments it takes are (All are mandatory):
 This has the two data developed for this paper. 
 * _MAS Datatset_:Each paper belongs with ```#index<paper-id>```. Then the year follows. After the year which will be prefixed by ```#y```, the citers and the citees follow. If there is a 
   ```$``` in the prefix of the any symbolic variable such as ```$y```, then that information pertains to one of the citers of the paper whose ```#index```
-  is closest to and before the line in question. If the prefix is ```\*``` then the information pertains to a citee of the paper in a similiar paper. You can find the data [here](https://drive.google.com/drive/folders/1SXmrDoi9F80ojgbU7mHcKgpE9Lje2m7g?usp=sharing). 
+  is closest to and before the line in question. If the prefix is ```\*``` then the information pertains to a citee of the paper in a similiar manner. You can find the data [here](https://drive.google.com/drive/folders/1SXmrDoi9F80ojgbU7mHcKgpE9Lje2m7g?usp=sharing). 
   
  * _Test Of Time Dataset_: This is a ```.csv``` file which has the test of time dataset which has been manually curated. 
  
