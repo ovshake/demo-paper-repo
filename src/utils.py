@@ -132,7 +132,7 @@ def check_edge_validity(global_citation_graph, PAPER_YEAR_DICT):
 """
 @Params:
 global_citation_graph: The global citation graph with all edges
-PAPEr_YEAR_DICT: Contains the publishing of the papers
+PAPER_YEAR_DICT: Contains the publishing of the papers
 
 @Returns:
 global_citation_graph: The global citation graph with noisy edges removed 
@@ -341,10 +341,109 @@ def convert_IDG_to_IDT(IDG):
 
 	return IDT_, total_branches
 
+def get_max_idi(num_citations):
+"""
+@Params: 
+num_citations: Number of citations of a paper whose max IDI is to be calculated 
+@Returns:
+The max IDI of the paper
+"""
+	return num_citations
 
+def get_min_idi(num_citations):
+"""
+@Params: 
+num_citations: Number of citations of a paper whose min IDI is to be calculated 
+@Returns:
+The min IDI of the paper
+"""
+	return (num_citations - int((num_citations - 1) / 2))*(float(1 + int((num_citations - 1) / 2)))
 
+def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
+"""
+@Params: 
+IDT: IDT of the paper 
+year: Year untill which IDI is to be calculated. Nodes will be removed from the IDT accordingly.
+PAPER_YEAR_DICT: Dictionary with paper ids as keys and year of publication as values.
+@Returns:
+The IDI of the paper. Max and min IDI corresponding to the number of citations are also returned.
+"""
+	IDT = get_idt_till_year(IDT, year, PAPER_YEAR_DICT)
 
+	if len(IDT.edges()) == 0:
+		return 0
 
-def get_idi(IDT, year, PAPER_YEAR_DICT):
+	nodes = list(IDT.nodes())
 
-	return idi, max_idi, min_idi
+	num_citations = len(nodes) - 1
+
+	cur_paper = None
+	for v in nodes:
+		out_edges = IDT.out_edges(nbunch = [v])
+		if len(out_edges) == 0:
+			cur_paper = v
+			break
+
+	if cur_paper == None:
+		print('No root node in given IDT')
+		exit(1)
+
+	leaf_nodes = []
+	for v in nodes:
+        in_edges = IDT.in_edges(nbunch = [v])
+        if len(in_edges) == 0:
+            leaf_nodes.append(v)
+
+    v_count = {i : 0 for i in nodes}
+    for v in leaf_nodes:
+        paths = list(nx.all_shortest_paths(IDT , source = v , target = cur_paper))
+        for path in paths:
+            for e in path:
+                v_count[e] += 1
+
+    idi = 0
+    for i in nodes:
+    	idi += v_count[i]
+
+	return idi, get_max_idi(num_citations), get_min_idi(num_citations)
+
+def get_idt_till_year(IDT, year, PAPER_YEAR_DICT):
+"""
+@Params: 
+IDT: IDT of the paper 
+year: Year untill which IDI is to be calculated. Nodes will be removed from the IDT accordingly.
+PAPER_YEAR_DICT: Dictionary with paper ids as keys and year of publication as values.
+@Returns:
+The pruned IDT of the paper. Papers (nodes) published after 'year' are removed from the IDT.
+"""
+	nodes = list(IDT.nodes())
+	cur_paper = None
+	for v in nodes:
+		out_edges = IDT.out_edges(nbunch = [v])
+		if len(out_edges) == 0:
+			cur_paper = v
+			break
+
+	if cur_paper == None:
+		print('No root node in given IDT')
+		exit(1)
+
+	induced_graph = set()
+    induced_graph_list = list(IDT.in_edges(nbunch = [cur_paper]))
+
+    for e in induced_graph_list:
+        if e[0] in PAPER_YEAR_DICT and int(PAPER_YEAR_DICT[e[0]]) <= year:
+            induced_graph.add(e[0])
+    
+    induced_graph.add(cur_paper)
+    H = IDT.subgraph(induced_graph)
+    H = nx.DiGraph(H)
+    
+    shortest_path = {}
+    for e in H.nodes():
+        e_list = list(H.out_edges(nbunch = [e]))
+        if len(e_list) > 1:
+            H.remove_edge(e , cur_paper)
+
+    return H
+
