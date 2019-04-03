@@ -58,8 +58,26 @@ To convert your Citation dataset to MAS-style, please keep in mind the following
 * ```#$y``` indicates the year in which the paper cited by the index paper has been published.
 * ```#$j``` indicates the journal in which the paper cited by the index paper has been published. Replace ```j``` with ```c``` to get the conference name.
 
+An example from the dataset 
+```
+#index29
+#*An evolutionary autonomous agents approach to image feature extraction
+#jIEEE Transactions on Evolutionary Computation - TEC[0], vol. 1, no. 2, pp. 141-158
+#y1997
+#%*New Prospects in Line Detection by Dynamic Programming[799913]
+#%jIEEE Transactions on Pattern Analysis and Machine Intelligence - PAMI[25], vol. 18, no. 4, pp. 426-431
+#%y1996
+#%*Automatic Finding of Main Roads in Aerial Images by Using Geometric-Stochastic Models and Estimation[800248]
+#%jIEEE Transactions on Pattern Analysis and Machine Intelligence - PAMI[25], vol. 18, no. 7, pp. 707-721
+#%y1996
+#$*Swarm cognition on off-road autonomous robots[39335482]
+#$@Pedro Santana[621081],Luís Correia[2108324],
+#$jSwarm Intelligence[40], vol. 5, no. 1, pp. 45-72
+#$y2011
+
+```
 The end is demarcated by the beginning of another index paper. 
-_Please follow the order in which the above points are when converting to your dataset._
+_Please follow the order in which the above points are when converting your dataset._
 
 Incase of any queries you can reach us at lcs2@iiitd.ac.in
 
