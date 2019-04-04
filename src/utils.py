@@ -2,6 +2,7 @@ import networkx as nx
 import os
 from os import listdir
 import pickle
+import random
 #global Variables
 INDEX_OFFSET = 6
 CITE_OFFSET = 3
@@ -47,10 +48,10 @@ def extract_paper_id(line):
 	return paper_id
 
 
-def parse_MAS_dataset(path):
+def parse_dataset(path):
 	"""
 	@Params
-	path: Path to the MAS Dataset
+	path: Path to the Dataset
 	@Returns
 	A global citation graph with edges from the citer to the cited.
 	"""
@@ -58,7 +59,6 @@ def parse_MAS_dataset(path):
 	global_citation_graph = nx.DiGraph() 
 	fields = os.listdir(path)
 	for field in fields:
-		print(field)
 		if field.split("_")[-1] != 'data.txt': #if not a data text file
 			continue
 		dataset_path = path + "/" + field
@@ -84,7 +84,7 @@ def parse_MAS_dataset(path):
 def parse_dates(path):
 	"""
 	@Params:
-	path: Path to MAS Dataset
+	path: Path to Dataset
 	@Returns: 
 	PAPER_YEAR_DICT: Dictionary with paper ids as keys publishing years as venues
 	"""
@@ -149,13 +149,13 @@ def check_edge_validity(global_citation_graph, PAPER_YEAR_DICT):
 		edge_1_present = edge_[0] in PAPER_YEAR_DICT
 		edge_2_present = edge_[1] in PAPER_YEAR_DICT
 		if  edge_1_present and edge_2_present and PAPER_YEAR_DICT[edge_[0]] < PAPER_YEAR_DICT[edge_[1]]:
-			global_citation_graph.remove_edge(edge_)
+			global_citation_graph.remove_edge(*edge_)
 
-		if edge_[0] == edge_[1]:
-			global_citation_graph.remove_edge(edge_)
+		elif edge_[0] == edge_[1]:
+			global_citation_graph.remove_edge(*edge_)
 
-		if not edge_1_present or not edge_2_present:
-			global_citation_graph.remove_edge(edge_)
+		elif not edge_1_present or not edge_2_present:
+			global_citation_graph.remove_edge(*edge_)
 
 	global_citation_graph = nx.DiGraph() 
 	global_citation_graph.add_edges_from(edge_set)
@@ -181,29 +181,44 @@ def remove_cycles(global_citation_graph):
 		induced_subgraph = set()
 		induced_subgraph_node_list = global_citation_graph.in_edges(nbunch = [paper])
 
-		for e in induced_graph_list:
-			induced_graph.add(e[0])
+		for e in induced_subgraph_node_list:
+			induced_subgraph.add(e[0])
 
-		induced_graph.add(paper)
+		induced_subgraph.add(paper)
 
 		subgraph_ = global_citation_graph.subgraph(induced_subgraph)
-		cycle_lists = (nx.simple_cycles(subgraph_))
+		# cycle_lists = nx.simple_cycles(subgraph_)
+		cycle_lists = nx.simple_cycles(subgraph_)
 
 		for cycle_list in list(cycle_lists):
 			length_of_cycle = len(cycle_list)
-			if length_of_cycle <= 2:
+			if length_of_cycle == 1:
+				try:
+					global_citation_graph.remove_edge(cycle_list[0] , cycle_list[0])
+				except IndexError:
+					print(cycle_list)
+
+				except nx.exception.NetworkXError:
+					pass
+
+			elif length_of_cycle == 2:
 				try:
 					global_citation_graph.remove_edge(cycle_list[0] , cycle_list[1])
+				except IndexError:
+					print(cycle_list)
+
 				except nx.exception.NetworkXError:
-					pass 
-				continue
+					pass
 
 			#Removing a Random Edge
-			r = random.randint(2,length_of_cycle - 1)
-			try:
-				global_citation_graph.remove_edge(cycle_list[r- 1] , cycle_list[r])
-			except nx.exception.NetworkXError:
-				pass 
+			else:
+				r = random.randint(2,length_of_cycle - 1)
+				try:
+					global_citation_graph.remove_edge(cycle_list[r- 1] , cycle_list[r])
+				except IndexError:
+					print(cycle_list)
+				except nx.exception.NetworkXError:
+					pass
 
 	return global_citation_graph
 
@@ -259,7 +274,7 @@ def IDT_init(global_citation_graph):
 
 		branch = []
 		total_branches = []
-		get_depth_of_each_branch(H , paper , 0, branch , total_branches)
+		get_depth_of_each_branch(IDG , paper , 0, branch , total_branches)
 		IDT_root_to_leaf_paths[paper] = total_branches
 		IDT_ = IDG.reverse(copy = False)
 		IDT[paper] = IDT_
@@ -311,7 +326,7 @@ def remove_edges_except(paper, ancestor_paper , IDG):
 	@Returns:
 	The IDG with all but the given ancestor's edge removed
 	"""
-	edge_list = list(G.out_edges(nbunch = paper))
+	edge_list = list(IDG.out_edges(nbunch = paper))
 	for e in edge_list:
 		if e[1] != ancestor_paper:
 			IDG.remove_edge(*e) 
@@ -373,6 +388,7 @@ def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
 	The IDI of the paper. Max and min IDI corresponding to the number of citations are also returned.
 	"""
 	IDT = get_idt_till_year(IDT, year, PAPER_YEAR_DICT)
+	num_citations = len(IDT.nodes()) - 1
 
 	if len(IDT.edges()) == 0:
 		return 0
@@ -408,6 +424,7 @@ def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
 	idi = 0
 	for i in nodes:
 		idi += v_count[i]
+
 
 	return idi, get_max_idi(num_citations), get_min_idi(num_citations)
 
@@ -451,3 +468,11 @@ def get_idt_till_year(IDT, year, PAPER_YEAR_DICT):
 
 	return H
 
+def get_depth_of_each_branch(G , paper, cur_depth, branch, total_branches):
+	e_list = list(G.in_edges(nbunch = paper))
+	branch.append(paper)
+	if len(e_list) == 0:
+		total_branches.append(branch)
+		return
+	for e in e_list:
+		get_depth_of_each_branch(G , e[0] , 1 + cur_depth , branch[:] ,total_branches)
