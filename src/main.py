@@ -2,7 +2,6 @@ import utils
 import argparse
 import logging
 parser = argparse.ArgumentParser(description='Calculating the IDT metric...')
-parser.add_argument('--masdataset' , help = 'path of the MAS dataset')
 parser.add_argument('--dumps' , help = 'path to store the pickled files') 
 parser.add_argument('--id',help = 'Paper ID According to MAS Dataset', type = int)
 parser.add_argument('--year' , help = 'Year to get the NID of', type = int)
