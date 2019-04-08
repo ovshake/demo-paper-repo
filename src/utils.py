@@ -71,11 +71,13 @@ def parse_dataset(path):
 
 			elif line[:CITE_OFFSET] == '#%*' and name != EMPTY:
 				cited_by_index_name = extract_paper_id(line) 
-				global_citation_graph.add_edge(name , cited_by_index_name)
+				# global_citation_graph.add_edge(name , cited_by_index_name)
+				global_citation_graph.add_edge(cited_by_index_name, name) 
 
 			elif line[:CITE_OFFSET] == "#$*" and name != EMPTY:
 				citing_index_name = extract_paper_id(line) 
-				global_citation_graph.add_edge(citing_index_name , name)
+				# global_citation_graph.add_edge(citing_index_name , name)
+				global_citation_graph.add_edge(name , citing_index_name)
 			line = file.readline().decode('utf8')
 
 
@@ -187,7 +189,6 @@ def remove_cycles(global_citation_graph):
 		induced_subgraph.add(paper)
 
 		subgraph_ = global_citation_graph.subgraph(induced_subgraph)
-		# cycle_lists = nx.simple_cycles(subgraph_)
 		cycle_lists = nx.simple_cycles(subgraph_)
 
 		for cycle_list in list(cycle_lists):
@@ -238,21 +239,25 @@ def IDT_init(global_citation_graph):
 	IDT_root_to_leaf_paths = {} 
 	nodes_with_cycle = 0
 	for paper in global_citation_graph.nodes().copy():
+		print(paper)
 
 		depth_dict = {}
 		induced_graph = set()
-		induced_graph_list = list(global_citation_graph.in_edges(nbunch = paper))
+		induced_graph_list = list(global_citation_graph.out_edges(nbunch = [paper]))
 
 
 		for e in induced_graph_list:
-			induced_graph.add(e[0])
+			induced_graph.add(e[1])
 
 		induced_graph.add(paper)
 
 		
-		#IDG has the reversed edges compared to the IDG discussed in paper. This
-		# has been taken care of at the end when the reversed IDT graph is returned
+
 		IDG = global_citation_graph.subgraph(induced_graph)
+		for e in IDG.nodes():
+			e_list = list(IDG.in_edges(nbunch = [e]))
+			if len(e_list) > 1:
+				IDG.remove_edge(paper , e)
 		visited = set()
 		not_visited = set(IDG.nodes())
 		not_visited.discard(paper)
@@ -276,7 +281,7 @@ def IDT_init(global_citation_graph):
 		total_branches = []
 		get_depth_of_each_branch(IDG , paper , 0, branch , total_branches)
 		IDT_root_to_leaf_paths[paper] = total_branches
-		IDT_ = IDG.reverse(copy = False)
+		IDT_ = IDG 
 		IDT[paper] = IDT_
 
 	return IDT , IDT_root_to_leaf_paths
@@ -292,9 +297,9 @@ def all_edges_in_visited(IDG,p, visited):
 	@Returns:
 	True if all the neighbours are visited else False
 	"""
-	edge_list = list(IDG.out_edges(nbunch = [p]))
+	edge_list = list(IDG.in_edges(nbunch = [p]))
 	for e in edge_list:
-		if e[1] not in visited:
+		if e[0] not in visited:
 			return False
 	return True
 
@@ -308,13 +313,13 @@ def get_parent_with_most_depth(depth_dict , IDG, p):
 	@Returns:
 	The neighbour which has the most depth and has been visited.
 	"""
-	edge_list = list(IDG.out_edges(nbunch = [p]))
+	edge_list = list(IDG.in_edges(nbunch = [p]))
 	max_depth = -1
 	ancestor_paper = EMPTY
 	for e in edge_list:
-		if depth_dict[e[1]] > max_depth:
-			max_depth = depth_dict[e[1]]
-			ancestor_paper = e[1]
+		if depth_dict[e[0]] > max_depth:
+			max_depth = depth_dict[e[0]]
+			ancestor_paper = e[0]
 	return ancestor_paper
 
 def remove_edges_except(paper, ancestor_paper , IDG):
@@ -326,9 +331,9 @@ def remove_edges_except(paper, ancestor_paper , IDG):
 	@Returns:
 	The IDG with all but the given ancestor's edge removed
 	"""
-	edge_list = list(IDG.out_edges(nbunch = paper))
+	edge_list = list(IDG.in_edges(nbunch = paper))
 	for e in edge_list:
-		if e[1] != ancestor_paper:
+		if e[0] != ancestor_paper:
 			IDG.remove_edge(*e) 
 	return IDG
 
@@ -356,7 +361,7 @@ def convert_IDG_to_IDT(IDG):
 	branch = []
 	total_branches = []
 	get_depth_of_each_branch(H , paper , 0, branch , total_branches)
-	IDT_ = IDG.reverse(copy = False)
+	# IDT_ = IDG.reverse(copy = False)
 
 	return IDT_, total_branches
 
@@ -367,7 +372,7 @@ def get_max_idi(num_citations):
 	@Returns:
 	The max IDI of the paper
 	"""
-	return num_citations
+	return (num_citations - round((num_citations - 1) / 2)) * (float(1 + round((num_citations - 1) / 2)))
 
 def get_min_idi(num_citations):
 	"""
@@ -376,7 +381,7 @@ def get_min_idi(num_citations):
 	@Returns:
 	The min IDI of the paper
 	"""
-	return (num_citations - int((num_citations - 1) / 2))*(float(1 + int((num_citations - 1) / 2)))
+	return num_citations 
 
 def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
 	"""
@@ -387,20 +392,18 @@ def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
 	@Returns:
 	The IDI of the paper. Max and min IDI corresponding to the number of citations are also returned.
 	"""
-	IDT = get_idt_till_year(IDT, year, PAPER_YEAR_DICT)
-	num_citations = len(IDT.nodes()) - 1
 
+	IDT = get_idt_till_year(IDT, year, PAPER_YEAR_DICT)
+	
 	if len(IDT.edges()) == 0:
-		return 0
+		return 0, 0, 0
 
 	nodes = list(IDT.nodes())
-
 	num_citations = len(nodes) - 1
-
 	cur_paper = None
 	for v in nodes:
-		out_edges = IDT.out_edges(nbunch = [v])
-		if len(out_edges) == 0:
+		in_edges = IDT.in_edges(nbunch = [v])
+		if len(in_edges) == 0:
 			cur_paper = v
 			break
 
@@ -410,20 +413,20 @@ def get_idi_till_year(IDT, year, PAPER_YEAR_DICT):
 
 	leaf_nodes = []
 	for v in nodes:
-		in_edges = IDT.in_edges(nbunch = [v])
+		out_edges = IDT.out_edges(nbunch = [v])
 		if len(in_edges) == 0:
 			leaf_nodes.append(v)
-
 	v_count = {i : 0 for i in nodes}
 	for v in leaf_nodes:
-		paths = list(nx.all_shortest_paths(IDT , source = v , target = cur_paper))
+		paths = list(nx.all_shortest_paths(IDT , source = cur_paper , target = v))
 		for path in paths:
 			for e in path:
 				v_count[e] += 1
 
 	idi = 0
 	for i in nodes:
-		idi += v_count[i]
+		if i != cur_paper:
+			idi += v_count[i]
 
 
 	return idi, get_max_idi(num_citations), get_min_idi(num_citations)
@@ -440,39 +443,32 @@ def get_idt_till_year(IDT, year, PAPER_YEAR_DICT):
 	nodes = list(IDT.nodes())
 	cur_paper = None
 	for v in nodes:
-		out_edges = IDT.out_edges(nbunch = [v])
-		if len(out_edges) == 0:
+		in_edges = IDT.in_edges(nbunch = [v])
+		if len(in_edges) == 0:
 			cur_paper = v
 			break
-
+			
 	if cur_paper == None:
 		print('No root node in given IDT')
 		exit(1)
-
+	
 	induced_graph = set()
-	induced_graph_list = list(IDT.in_edges(nbunch = [cur_paper]))
-
+	induced_graph_list = list(IDT.out_edges(nbunch = [cur_paper]))
+	
 	for e in induced_graph_list:
-		if e[0] in PAPER_YEAR_DICT and int(PAPER_YEAR_DICT[e[0]]) <= year:
-			induced_graph.add(e[0])
+		if e[1] in PAPER_YEAR_DICT and int(PAPER_YEAR_DICT[e[1]]) <= year:
+			induced_graph.add(e[1])
 	
 	induced_graph.add(cur_paper)
 	H = IDT.subgraph(induced_graph)
-	H = nx.DiGraph(H)
-	
-	shortest_path = {}
-	for e in H.nodes():
-		e_list = list(H.out_edges(nbunch = [e]))
-		if len(e_list) > 1:
-			H.remove_edge(e , cur_paper)
 
 	return H
 
 def get_depth_of_each_branch(G , paper, cur_depth, branch, total_branches):
-	e_list = list(G.in_edges(nbunch = paper))
+	e_list = list(G.out_edges(nbunch = [paper]))
 	branch.append(paper)
 	if len(e_list) == 0:
 		total_branches.append(branch)
 		return
 	for e in e_list:
-		get_depth_of_each_branch(G , e[0] , 1 + cur_depth , branch[:] ,total_branches)
+		get_depth_of_each_branch(G , e[1] , 1 + cur_depth , branch[:] ,total_branches)

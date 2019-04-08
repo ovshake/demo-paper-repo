@@ -38,6 +38,7 @@ if __name__ == '__main__':
 	logging.info('Removing Cycles')
 	global_citation_graph = utils.remove_cycles(global_citation_graph) 
 	logging.info('Removed Cycles')
+	utils.dump_file(args.dumps , 'global_citation_graph_decyclised' , global_citation_graph) 
 	IDT_Dict, IDT_root_to_leaf_paths = utils.IDT_init(global_citation_graph)
 	logging.info('Serialising the Graph')
 	
